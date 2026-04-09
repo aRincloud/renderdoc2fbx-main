@@ -37,3 +37,9 @@ then go to the Mesh Viewer click the extension icon menu to export the current d
 ~~Python extension not efficient enough for that large Mesh. ~~
 
 I change the export method which greatly enhance the export performance. 
+
+## Changes In This Version
+
+- Add compatibility for newer RenderDoc builds where the mesh input table is exposed as `inTable` instead of `vsinData`.
+- Keep support for older RenderDoc builds by trying both table names before export.
+- Show a clear error dialog if neither mesh table can be found, instead of raising an exception.
