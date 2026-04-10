@@ -43,4 +43,6 @@ I change the export method which greatly enhance the export performance.
 - Add compatibility for newer RenderDoc builds where the mesh input table is exposed as `inTable` instead of `vsinData`.
 - Keep support for older RenderDoc builds by trying both table names before export.
 - Show a clear error dialog if neither mesh table can be found, instead of raising an exception.
-- Reverse triangle winding for the Unreal preset so imported FBX meshes face outward in Unreal Engine.
+- Convert Unreal exports into the expected coordinate space so imported meshes no longer need manual axis correction.
+- Fix mirrored orientation in Unreal exports by applying the correct handedness conversion during export.
+- Keep polygon corner data consistent with the exported geometry so Unreal imports no longer show UV distortion or flipped faces.
