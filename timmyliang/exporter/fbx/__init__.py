@@ -160,18 +160,26 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
     # idx_data = ",".join([str(idx) for idx in idx_list])
     idx_len = len(idx_list)
 
+    def transform_rx_neg90(values):
+        x, y, z = values[:3]
+        return [x, z, -y]
+
+    def transform_rx_neg90_mirror_x(values):
+        x, y, z = values[:3]
+        return [-x, z, -y]
+
+    def transform_unreal_vector(values):
+        if ENGINE != "unreal":
+            return list(values[:3])
+        return transform_rx_neg90_mirror_x(values)
+
     def reorder_triangle_corners(values):
         if ENGINE != "unreal":
             return list(values)
-
-        reordered = []
-        for i in range(0, len(values), 3):
-            triangle = list(values[i : i + 3])
-            if len(triangle) == 3:
-                reordered.extend((triangle[0], triangle[2], triangle[1]))
-            else:
-                reordered.extend(triangle)
-        return reordered
+        # The Unreal-space export transform includes a reflection, which already
+        # flips handedness. Keep the original triangle corner order so faces
+        # stay outward after the coordinate conversion.
+        return list(values)
 
     class ProcessHandler(object):
         def run(self):
@@ -182,7 +190,11 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             print("elapsed time template: %s" % (time.time() - curr))
 
         def run_vertices(self):
-            vertices = [str(v) for idx, values in sorted(vertex_data[POSITION].items()) for v in values[:3]]
+            transformed_vertices = [
+                transform_unreal_vector(values)
+                for idx, values in sorted(vertex_data[POSITION].items())
+            ]
+            vertices = [str(v) for values in transformed_vertices for v in values]
             ARGS["vertices"] = ",".join(vertices)
             ARGS["vertices_num"] = len(vertices)
 
@@ -201,7 +213,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
 
             # NOTE FBX_ASCII only support 3 dimension
             normal_values = reorder_triangle_corners(value_dict[NORMAL])
-            normals = [str(v) for values in normal_values for v in values[:3]]
+            transformed_normals = [transform_unreal_vector(values) for values in normal_values]
+            normals = [str(v) for values in transformed_normals for v in values]
 
             ARGS[
                 "LayerElementNormal"
@@ -232,7 +245,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             if not vertex_data.get(BINORMAL):
                 return
             # NOTE FBX_ASCII only support 3 dimension
-            binormals = [str(-v) for values in value_dict[BINORMAL] for v in values[:3]]
+            transformed_binormals = [transform_unreal_vector(values) for values in value_dict[BINORMAL]]
+            binormals = [str(-v) for values in transformed_binormals for v in values]
 
             ARGS[
                 "LayerElementBiNormal"
@@ -269,7 +283,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
                 return
 
             tangent_values = reorder_triangle_corners(value_dict[TANGENT])
-            tangents = [str(v) for values in tangent_values for v in values[:3]]
+            transformed_tangents = [transform_unreal_vector(values) for values in tangent_values]
+            tangents = [str(v) for values in transformed_tangents for v in values]
 
             ARGS[
                 "LayerElementTangent"
