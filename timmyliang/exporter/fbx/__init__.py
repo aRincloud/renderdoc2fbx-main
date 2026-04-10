@@ -160,6 +160,19 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
     # idx_data = ",".join([str(idx) for idx in idx_list])
     idx_len = len(idx_list)
 
+    def reorder_triangle_corners(values):
+        if ENGINE != "unreal":
+            return list(values)
+
+        reordered = []
+        for i in range(0, len(values), 3):
+            triangle = list(values[i : i + 3])
+            if len(triangle) == 3:
+                reordered.extend((triangle[0], triangle[2], triangle[1]))
+            else:
+                reordered.extend(triangle)
+        return reordered
+
     class ProcessHandler(object):
         def run(self):
             curr = time.time()
@@ -174,7 +187,11 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             ARGS["vertices_num"] = len(vertices)
 
         def run_polygons(self):
-            polygons = [str(idx ^ -1 if i % 3 == 2 else idx) for i, idx in enumerate(idx_list)]
+            polygon_indices = reorder_triangle_corners(idx_list)
+            polygons = [
+                str(idx ^ -1 if i % 3 == 2 else idx)
+                for i, idx in enumerate(polygon_indices)
+            ]
             ARGS["polygons"] = ",".join(polygons)
             ARGS["polygons_num"] = len(polygons)
 
@@ -183,7 +200,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
                 return
 
             # NOTE FBX_ASCII only support 3 dimension
-            normals = [str(v) for values in value_dict[NORMAL] for v in values[:3]]
+            normal_values = reorder_triangle_corners(value_dict[NORMAL])
+            normals = [str(v) for values in normal_values for v in values[:3]]
 
             ARGS[
                 "LayerElementNormal"
@@ -250,7 +268,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             if not vertex_data.get(TANGENT):
                 return
 
-            tangents = [str(v) for values in value_dict[TANGENT] for v in values[:3]]
+            tangent_values = reorder_triangle_corners(value_dict[TANGENT])
+            tangents = [str(v) for values in tangent_values for v in values[:3]]
 
             ARGS[
                 "LayerElementTangent"
@@ -282,10 +301,11 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             if not vertex_data.get(COLOR):
                 return
 
+            color_values = reorder_triangle_corners(value_dict[COLOR])
             colors = [
                 # str(v) if i % 4 else "1"
                 str(v)
-                for values in value_dict[COLOR]
+                for values in color_values
                 for i, v in enumerate(values, 1)
             ]
 
@@ -307,7 +327,7 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             """ % {
                 "colors": ",".join(colors),
                 "colors_num": len(colors),
-                "colors_indices": ",".join([str(i) for i in range(idx_len)]),
+                "colors_indices": ",".join([str(i) for i in range(len(color_values))]),
                 "colors_indices_num": idx_len,
             }
             ARGS[
@@ -323,7 +343,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             if not vertex_data.get(UV):
                 return
 
-            uvs_indices = ",".join([str(idx) for idx in idx_list])
+            uv_index_values = reorder_triangle_corners(idx_list)
+            uvs_indices = ",".join([str(idx) for idx in uv_index_values])
             uvs = [
                 # NOTE flip y axis
                 str(1 - v if i else v)
@@ -366,7 +387,8 @@ def export_fbx(save_path, mapper, data, attr_list, controller):
             if not vertex_data.get(UV2):
                 return
 
-            uvs_indices = ",".join([str(idx) for idx in idx_list])
+            uv2_index_values = reorder_triangle_corners(idx_list)
+            uvs_indices = ",".join([str(idx) for idx in uv2_index_values])
             uvs = [
                 # NOTE flip y axis
                 str(1 - v if i else v)
